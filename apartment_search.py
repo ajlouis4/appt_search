@@ -41,6 +41,8 @@ def generate_comparisons(n_apartments=100, bedrooms=1):
 def analyze_preferences(user_choices):
     """Analyze user choices to determine the most important features, with price and size scoring based on preference."""
     feature_importance = Counter()
+    neighborhood_counts = Counter()
+    neighborhood_wins = Counter()
     total_comparisons = len(user_choices)
     
     for choice in user_choices:
@@ -56,17 +58,20 @@ def analyze_preferences(user_choices):
             feature_importance["Size Preference"] += 1
         
         # Neighborhood importance
+        neighborhood_counts[apt_a["Neighborhood"]] += 1
+        neighborhood_counts[apt_b["Neighborhood"]] += 1
+        
         selected_apartment = apt_a if preferred == "Apartment A" else apt_b
-        feature_importance[f"Neighborhood - {selected_apartment['Neighborhood']}"] += 1
+        neighborhood_wins[selected_apartment["Neighborhood"]] += 1
         
         # Amenity importance
         for amenity in selected_apartment["Amenities"]:
             feature_importance[f"Amenity - {amenity}"] += 1
     
-    # Normalize neighborhood scores based on total comparisons
-    for key in list(feature_importance.keys()):
-        if "Neighborhood -" in key:
-            feature_importance[key] = feature_importance[key] / total_comparisons
+    # Calculate neighborhood score as win rate multiplied by total comparisons
+    for neighborhood, wins in neighborhood_wins.items():
+        if neighborhood_counts[neighborhood] > 0:
+            feature_importance[f"Neighborhood - {neighborhood}"] = (wins / neighborhood_counts[neighborhood]) * total_comparisons
     
     sorted_features = feature_importance.most_common()
     return pd.DataFrame(sorted_features, columns=["Feature", "Importance"])
