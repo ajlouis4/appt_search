@@ -99,7 +99,8 @@ def streamlit_app():
         if st.button("Save Response"):
             st.session_state.user_choices.append({"Comparison": st.session_state.current_index + 1, "Preferred": choice, "Apartment A": apt1, "Apartment B": apt2})
             st.session_state.current_index += 1
-            st.experimental_rerun()
+            st.experimental_set_query_params(index=st.session_state.current_index)
+            st.rerun()
     
     if st.session_state.current_index >= len(st.session_state.comparison_pairs):
         if st.button("Analyze Preferences"):
