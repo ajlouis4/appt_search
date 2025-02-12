@@ -68,43 +68,44 @@ def streamlit_app():
     if "user_choices" not in st.session_state:
         st.session_state.user_choices = []
     
-    bedroom_choice = st.radio("Select Apartment Type", ["1 Bedroom", "2 Bedroom"])
+    if "current_index" not in st.session_state:
+        st.session_state.current_index = 0
+    
+    bedroom_choice = st.radio("Select Apartment Type", ["1 Bedroom", "2 Bedroom"], key="bedroom_choice")
     bedrooms = 1 if bedroom_choice == "1 Bedroom" else 2
     
-    if "comparison_pairs" not in st.session_state:
+    if "comparison_pairs" not in st.session_state or st.session_state.bedroom_choice != bedroom_choice:
         st.session_state.comparison_pairs = generate_comparisons(bedrooms=bedrooms)
+        st.session_state.current_index = 0
     
-    st.write("Please compare the apartments and select your preferred option.")
-    for i, (apt1, apt2) in enumerate(st.session_state.comparison_pairs, 1):
-        st.subheader(f"Comparison {i} - {bedroom_choice}")
+    if st.session_state.current_index < len(st.session_state.comparison_pairs):
+        apt1, apt2 = st.session_state.comparison_pairs[st.session_state.current_index]
+        st.subheader(f"Comparison {st.session_state.current_index + 1} - {bedroom_choice}")
         col1, col2 = st.columns(2)
         
         with col1:
             st.write("### Apartment A")
             for key, value in apt1.items():
-                if key == "Amenities":
-                    st.write(f"**{key}:** {', '.join(value)}")
-                else:
-                    st.write(f"**{key}:** {value}")
+                st.write(f"**{key}:** {', '.join(value) if isinstance(value, list) else value}")
         
         with col2:
             st.write("### Apartment B")
             for key, value in apt2.items():
-                if key == "Amenities":
-                    st.write(f"**{key}:** {', '.join(value)}")
-                else:
-                    st.write(f"**{key}:** {value}")
+                st.write(f"**{key}:** {', '.join(value) if isinstance(value, list) else value}")
         
-        choice = st.radio(f"Choose for Comparison {i}", ("Apartment A", "Apartment B"), key=f"choice_{i}")
-        if st.button(f"Save Choice {i}", key=f"save_choice_{i}"):
-            st.session_state.user_choices.append({"Comparison": i, "Preferred": choice, "Apartment A": apt1, "Apartment B": apt2})
-            st.success(f"Choice for Comparison {i} saved!")
+        choice = st.radio("Select your preferred apartment", ("Apartment A", "Apartment B"), key=f"choice_{st.session_state.current_index}")
+        
+        if st.button("Save Response"):
+            st.session_state.user_choices.append({"Comparison": st.session_state.current_index + 1, "Preferred": choice, "Apartment A": apt1, "Apartment B": apt2})
+            st.session_state.current_index += 1
+            st.experimental_rerun()
     
-    if st.button("Analyze Preferences"):
-        results_df = analyze_preferences(st.session_state.user_choices)
-        st.write("### Most Important Features")
-        st.dataframe(results_df)
-        st.download_button("Download Feature Importance CSV", results_df.to_csv(index=False).encode("utf-8"), "Feature_Importance.csv", "text/csv")
+    if st.session_state.current_index >= len(st.session_state.comparison_pairs):
+        if st.button("Analyze Preferences"):
+            results_df = analyze_preferences(st.session_state.user_choices)
+            st.write("### Most Important Features")
+            st.dataframe(results_df)
+            st.download_button("Download Feature Importance CSV", results_df.to_csv(index=False).encode("utf-8"), "Feature_Importance.csv", "text/csv")
 
 if __name__ == "__main__":
     streamlit_app()
