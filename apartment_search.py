@@ -24,7 +24,7 @@ def generate_apartment(bedrooms):
     price = random.randint(*price_range)
     size = random.randint(*size_range)
     
-    amenities_pool = random.random() < 0.3  # 30% chance for a pool if allowed
+    amenities_pool = random.random() < 0.6  # 30% chance for a pool if allowed
     
     amenities = set()
     if price_range == price_brackets[0]:  # Low price tier
@@ -57,34 +57,32 @@ def generate_comparisons(n_apartments=10, bedrooms=1):
     random.shuffle(pairs)
     return pairs[:25]
 
-def normalize_price(price, bedrooms):
-    """Normalize price based on bedroom type."""
-    if bedrooms == 1:
-        min_price, max_price = 2000, 3000
-    else:
-        min_price, max_price = 2800, 3900
-    return (price - min_price) / (max_price - min_price)
-
-def normalize_size(size, bedrooms):
-    """Normalize size based on bedroom type."""
-    if bedrooms == 1:
-        min_size, max_size = 500, 900
-    else:
-        min_size, max_size = 700, 1100
-    return (size - min_size) / (max_size - min_size)
-
 def analyze_preferences(user_choices):
-    """Analyze user choices to determine the most important features."""
+    """Analyze user choices to determine the most important features, with price and size scoring based on preference."""
     feature_importance = Counter()
     
     for choice in user_choices:
+        apt_a, apt_b = choice["Apartment A"], choice["Apartment B"]
         preferred = choice["Preferred"]
-        apartment = choice["Apartment A"] if preferred == "Apartment A" else choice["Apartment B"]
         
-        feature_importance["Normalized Price"] += normalize_price(apartment["Price"], apartment["Bedrooms"])
-        feature_importance["Normalized Size"] += normalize_size(apartment["Size"], apartment["Bedrooms"])
-        feature_importance[f"Neighborhood - {apartment['Neighborhood']}"] += 1
-        for amenity in apartment["Amenities"]:
+        # Price sensitivity: 1 if lower price was picked, 0 otherwise
+        if (apt_a["Price"] < apt_b["Price"] and preferred == "Apartment A") or (apt_b["Price"] < apt_a["Price"] and preferred == "Apartment B"):
+            feature_importance["Price Sensitivity"] += 1
+        else:
+            feature_importance["Price Sensitivity"] += 0
+        
+        # Size preference: 1 if larger size was picked, 0 otherwise
+        if (apt_a["Size"] > apt_b["Size"] and preferred == "Apartment A") or (apt_b["Size"] > apt_a["Size"] and preferred == "Apartment B"):
+            feature_importance["Size Preference"] += 1
+        else:
+            feature_importance["Size Preference"] += 0
+        
+        # Neighborhood importance
+        selected_apartment = apt_a if preferred == "Apartment A" else apt_b
+        feature_importance[f"Neighborhood - {selected_apartment['Neighborhood']}"] += 1
+        
+        # Amenity importance
+        for amenity in selected_apartment["Amenities"]:
             feature_importance[f"Amenity - {amenity}"] += 1
     
     sorted_features = feature_importance.most_common()
