@@ -1,0 +1,83 @@
+import random
+import pandas as pd
+import streamlit as st
+from itertools import combinations
+
+def generate_apartment(bedrooms):
+    """Generate a random apartment with given constraints."""
+    if bedrooms == 1:
+        price_brackets = [(2000, 2200), (2300, 2600), (2800, 3000)]
+        size_range = (500, 900)
+    else:
+        price_brackets = [(2800, 3000), (3000, 3400), (3600, 3900)]
+        size_range = (700, 1100)
+    
+    price_range = random.choice(price_brackets)
+    price = random.randint(*price_range)
+    size = random.randint(*size_range)
+    
+    amenities_pool = random.random() < 0.3  # 30% chance for a pool if allowed
+    
+    if price_range == price_brackets[0]:  # Low price tier
+        amenities = {"Fitness Center"}
+        if amenities_pool:
+            amenities.add("Pool")
+    else:
+        amenities = set(random.sample(["Pool", "Sauna", "Fitness Center", "EV Charging", "Basketball Court"],
+                                      k=random.randint(1, 5)))
+    
+    neighborhoods = ["Lake Shore East", "River North", "Loop", "Lincoln Park", "Wicker Park", "West Loop", "Fulton Market"]
+    neighborhood = random.choice(neighborhoods)
+    
+    return {
+        "Bedrooms": bedrooms,
+        "Price": price,
+        "Size": size,
+        "Amenities": ", ".join(amenities),
+        "Neighborhood": neighborhood
+    }
+
+def generate_comparisons(n_apartments=10):
+    """Generate all pairwise comparisons within each bedroom group."""
+    one_bed_apartments = [generate_apartment(1) for _ in range(n_apartments)]
+    two_bed_apartments = [generate_apartment(2) for _ in range(n_apartments)]
+    
+    one_bed_pairs = list(combinations(one_bed_apartments, 2))
+    two_bed_pairs = list(combinations(two_bed_apartments, 2))
+    
+    return one_bed_pairs, two_bed_pairs
+
+def streamlit_app():
+    """Streamlit UI for apartment comparisons."""
+    st.title("Apartment Pairwise Comparison Study")
+    
+    st.write("Please compare the apartments and select your preferred option.")
+    
+    one_bed_pairs, two_bed_pairs = generate_comparisons()
+    user_choices = []
+    
+    for i, (apt1, apt2) in enumerate(one_bed_pairs, 1):
+        st.subheader(f"Comparison {i} - 1 Bedroom")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.write("### Apartment A")
+            for key, value in apt1.items():
+                st.write(f"**{key}:** {value}")
+        
+        with col2:
+            st.write("### Apartment B")
+            for key, value in apt2.items():
+                st.write(f"**{key}:** {value}")
+        
+        choice = st.radio(f"Choose for Comparison {i}", ("Apartment A", "Apartment B"), key=f"choice_{i}")
+        user_choices.append({"Comparison": i, "Preferred": choice})
+    
+    if st.button("Save Responses"):
+        results_df = pd.DataFrame(user_choices)
+        results_df.to_csv("User_Choices.csv", index=False)
+        st.success("Your choices have been saved!")
+        st.download_button("Download CSV", results_df.to_csv(index=False).encode("utf-8"), "User_Choices.csv", "text/csv")
+
+if __name__ == "__main__":
+    streamlit_app()
