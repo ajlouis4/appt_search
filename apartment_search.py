@@ -35,13 +35,13 @@ def generate_apartment(bedrooms):
 def generate_comparisons(n_apartments=100, bedrooms=1):
     """Generate 100 apartments and select 25 random pairwise comparisons."""
     apartments = [generate_apartment(bedrooms) for _ in range(n_apartments)]
-    pairs = list(combinations(apartments, 2))
-    random.shuffle(pairs)
-    return pairs[:25]
+    pairs = random.sample(list(combinations(apartments, 2)), 25)
+    return pairs
 
 def analyze_preferences(user_choices):
     """Analyze user choices to determine the most important features, with price and size scoring based on preference."""
     feature_importance = Counter()
+    total_comparisons = len(user_choices)
     
     for choice in user_choices:
         apt_a, apt_b = choice["Apartment A"], choice["Apartment B"]
@@ -50,14 +50,10 @@ def analyze_preferences(user_choices):
         # Price sensitivity: 1 if lower price was picked, 0 otherwise
         if (apt_a["Price"] < apt_b["Price"] and preferred == "Apartment A") or (apt_b["Price"] < apt_a["Price"] and preferred == "Apartment B"):
             feature_importance["Price Sensitivity"] += 1
-        else:
-            feature_importance["Price Sensitivity"] += 0
         
         # Size preference: 1 if larger size was picked, 0 otherwise
         if (apt_a["Size"] > apt_b["Size"] and preferred == "Apartment A") or (apt_b["Size"] > apt_a["Size"] and preferred == "Apartment B"):
             feature_importance["Size Preference"] += 1
-        else:
-            feature_importance["Size Preference"] += 0
         
         # Neighborhood importance
         selected_apartment = apt_a if preferred == "Apartment A" else apt_b
@@ -66,6 +62,11 @@ def analyze_preferences(user_choices):
         # Amenity importance
         for amenity in selected_apartment["Amenities"]:
             feature_importance[f"Amenity - {amenity}"] += 1
+    
+    # Normalize neighborhood scores based on total comparisons
+    for key in list(feature_importance.keys()):
+        if "Neighborhood -" in key:
+            feature_importance[key] = feature_importance[key] / total_comparisons
     
     sorted_features = feature_importance.most_common()
     return pd.DataFrame(sorted_features, columns=["Feature", "Importance"])
