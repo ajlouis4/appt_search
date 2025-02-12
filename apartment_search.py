@@ -26,11 +26,11 @@ def generate_apartment(bedrooms):
     return {
         "Bedrooms": bedrooms,
         "Price": price,
-        "Price Category": categorize_price(price, bedrooms),
         "Size": size,
-        "Size Category": categorize_size(size, bedrooms),
         "Neighborhood": neighborhood,
-        "Amenities": amenities
+        "Amenities": amenities,
+        "Price Category": categorize_price(price, bedrooms),
+        "Size Category": categorize_size(size, bedrooms)
     }
 
 def categorize_price(price, bedrooms):
@@ -122,7 +122,8 @@ def streamlit_app():
         apartment = st.session_state.apartments[st.session_state.current_index]
         st.subheader(f"Apartment {st.session_state.current_index + 1} - {bedroom_choice}")
         
-        for key, value in apartment.items():
+        for key in ["Price", "Size", "Neighborhood", "Amenities"]:
+            value = apartment[key]
             st.write(f"**{key}:** {', '.join(value) if isinstance(value, list) else value}")
         
         rating = st.slider("Rate this apartment (1-5)", 1, 5, 3, key=f"rating_{st.session_state.current_index}")
