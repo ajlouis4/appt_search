@@ -25,14 +25,16 @@ def generate_apartment(bedrooms):
     
     return {
         "Bedrooms": bedrooms,
-        "Price": categorize_price(price, bedrooms),
-        "Size": categorize_size(size, bedrooms),
+        "Price": price,
+        "Price Category": categorize_price(price, bedrooms),
+        "Size": size,
+        "Size Category": categorize_size(size, bedrooms),
         "Neighborhood": neighborhood,
         "Amenities": amenities
     }
 
 def categorize_price(price, bedrooms):
-    """Categorize price into Small, Medium, or Large buckets."""
+    """Categorize price into Low, Medium, or High buckets for importance evaluation."""
     if bedrooms == 1:
         if price < 2300:
             return "Low"
@@ -49,7 +51,7 @@ def categorize_price(price, bedrooms):
             return "High"
 
 def categorize_size(size, bedrooms):
-    """Categorize size into Small, Medium, or Large buckets."""
+    """Categorize size into Small, Medium, or Large buckets for importance evaluation."""
     if bedrooms == 1:
         if size < 650:
             return "Small"
@@ -78,11 +80,11 @@ def analyze_preferences(user_ratings):
         apartment = rating_entry["Apartment"]
         rating = rating_entry["Rating"]
         
-        feature_counts[f"Price - {apartment['Price']}"] += 1
-        feature_importance[f"Price - {apartment['Price']}"] += rating
+        feature_counts[f"Price - {apartment['Price Category']}"] += 1
+        feature_importance[f"Price - {apartment['Price Category']}"] += rating
         
-        feature_counts[f"Size - {apartment['Size']}"] += 1
-        feature_importance[f"Size - {apartment['Size']}"] += rating
+        feature_counts[f"Size - {apartment['Size Category']}"] += 1
+        feature_importance[f"Size - {apartment['Size Category']}"] += rating
         
         feature_counts[f"Neighborhood - {apartment['Neighborhood']}"] += 1
         feature_importance[f"Neighborhood - {apartment['Neighborhood']}"] += rating
