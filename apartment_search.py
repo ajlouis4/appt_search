@@ -25,31 +25,75 @@ def generate_apartment(bedrooms):
     
     return {
         "Bedrooms": bedrooms,
-        "Price": price,
-        "Size": size,
+        "Price": categorize_price(price, bedrooms),
+        "Size": categorize_size(size, bedrooms),
         "Neighborhood": neighborhood,
         "Amenities": amenities
     }
+
+def categorize_price(price, bedrooms):
+    """Categorize price into Small, Medium, or Large buckets."""
+    if bedrooms == 1:
+        if price < 2300:
+            return "Low"
+        elif price < 2700:
+            return "Medium"
+        else:
+            return "High"
+    else:
+        if price < 3100:
+            return "Low"
+        elif price < 3500:
+            return "Medium"
+        else:
+            return "High"
+
+def categorize_size(size, bedrooms):
+    """Categorize size into Small, Medium, or Large buckets."""
+    if bedrooms == 1:
+        if size < 650:
+            return "Small"
+        elif size < 800:
+            return "Medium"
+        else:
+            return "Large"
+    else:
+        if size < 850:
+            return "Small"
+        elif size < 1000:
+            return "Medium"
+        else:
+            return "Large"
 
 def generate_apartments(n_apartments=25, bedrooms=1):
     """Generate a list of apartments for rating."""
     return [generate_apartment(bedrooms) for _ in range(n_apartments)]
 
 def analyze_preferences(user_ratings):
-    """Analyze user ratings to determine the most important features."""
+    """Analyze user ratings to determine the most important features, scaling importance by availability."""
     feature_importance = Counter()
+    feature_counts = Counter()
     
     for rating_entry in user_ratings:
         apartment = rating_entry["Apartment"]
         rating = rating_entry["Rating"]
         
-        # Adjust feature importance based on rating
-        feature_importance["Price"] += rating * (1 / apartment["Price"])  # Higher rating for lower price
-        feature_importance["Size"] += rating * apartment["Size"]  # Higher rating for larger size
+        feature_counts[f"Price - {apartment['Price']}"] += 1
+        feature_importance[f"Price - {apartment['Price']}"] += rating
+        
+        feature_counts[f"Size - {apartment['Size']}"] += 1
+        feature_importance[f"Size - {apartment['Size']}"] += rating
+        
+        feature_counts[f"Neighborhood - {apartment['Neighborhood']}"] += 1
         feature_importance[f"Neighborhood - {apartment['Neighborhood']}"] += rating
         
         for amenity in apartment["Amenities"]:
+            feature_counts[f"Amenity - {amenity}"] += 1
             feature_importance[f"Amenity - {amenity}"] += rating
+    
+    # Scale importance by availability
+    for feature in feature_importance:
+        feature_importance[feature] /= feature_counts[feature]
     
     sorted_features = feature_importance.most_common()
     return pd.DataFrame(sorted_features, columns=["Feature", "Importance"])
