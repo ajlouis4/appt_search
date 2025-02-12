@@ -78,47 +78,41 @@ def analyze_preferences(user_ratings):
     size_scores = {"Small": 0, "Medium": 0, "Large": 0}
     price_counts = {"Low": 0, "Medium": 0, "High": 0}
     size_counts = {"Small": 0, "Medium": 0, "Large": 0}
+    neighborhood_scores = Counter()
+    neighborhood_counts = Counter()
+    amenity_scores = Counter()
+    amenity_counts = Counter()
     
     for rating_entry in user_ratings:
         apartment = rating_entry["Apartment"]
         rating = rating_entry["Rating"]
         
-        price_category = apartment['Price Category']
-        size_category = apartment['Size Category']
+        price_scores[apartment['Price Category']] += rating
+        price_counts[apartment['Price Category']] += 1
         
-        price_scores[price_category] += rating
-        price_counts[price_category] += 1
+        size_scores[apartment['Size Category']] += rating
+        size_counts[apartment['Size Category']] += 1
         
-        size_scores[size_category] += rating
-        size_counts[size_category] += 1
+        neighborhood_scores[apartment['Neighborhood']] += rating
+        neighborhood_counts[apartment['Neighborhood']] += 1
+        
+        for amenity in apartment['Amenities']:
+            amenity_scores[amenity] += rating
+            amenity_counts[amenity] += 1
         
     # Compute price sensitivity
-    if price_counts["Low"] > 0 and price_counts["High"] > 0:
-        price_sensitivity = (price_scores["Low"] / price_counts["Low"]) - (price_scores["High"] / price_counts["High"])
-    else:
-        price_sensitivity = 0
-    
-    if price_counts["Low"] > 0 and price_counts["Medium"] > 0:
-        price_sensitivity += ((price_scores["Low"] / price_counts["Low"]) - (price_scores["Medium"] / price_counts["Medium"])) * 1.5
-    
-    if price_counts["Medium"] > 0 and price_counts["High"] > 0:
-        price_sensitivity += ((price_scores["Medium"] / price_counts["Medium"]) - (price_scores["High"] / price_counts["High"])) * 1.5
-    
-    feature_importance["Price Sensitivity"] = price_sensitivity
+    feature_importance["Price Sensitivity"] = sum((price_scores[c] / price_counts[c]) for c in price_counts if price_counts[c] > 0)
     
     # Compute size sensitivity
-    if size_counts["Small"] > 0 and size_counts["Large"] > 0:
-        size_sensitivity = (size_scores["Large"] / size_counts["Large"]) - (size_scores["Small"] / size_counts["Small"])
-    else:
-        size_sensitivity = 0
+    feature_importance["Size Sensitivity"] = sum((size_scores[c] / size_counts[c]) for c in size_counts if size_counts[c] > 0)
     
-    if size_counts["Small"] > 0 and size_counts["Medium"] > 0:
-        size_sensitivity += ((size_scores["Medium"] / size_counts["Medium"]) - (size_scores["Small"] / size_counts["Small"])) * 1.5
+    # Compute neighborhood importance
+    for neighborhood in neighborhood_scores:
+        feature_importance[f"Neighborhood - {neighborhood}"] = neighborhood_scores[neighborhood] / neighborhood_counts[neighborhood]
     
-    if size_counts["Medium"] > 0 and size_counts["Large"] > 0:
-        size_sensitivity += ((size_scores["Large"] / size_counts["Large"]) - (size_scores["Medium"] / size_counts["Medium"])) * 1.5
-    
-    feature_importance["Size Sensitivity"] = size_sensitivity
+    # Compute amenity importance
+    for amenity in amenity_scores:
+        feature_importance[f"Amenity - {amenity}"] = amenity_scores[amenity] / amenity_counts[amenity]
     
     sorted_features = feature_importance.most_common()
     return pd.DataFrame(sorted_features, columns=["Feature", "Importance"])
