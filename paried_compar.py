@@ -35,7 +35,7 @@ def generate_apartment(bedrooms):
         "Price": price,
         "Size": size,
         "Neighborhood": neighborhood,
-        "Amenities": amenities
+        "Amenities": list(amenities)
     }
 
 def generate_comparisons(n_apartments=10, bedrooms=1):
@@ -52,12 +52,11 @@ def analyze_preferences(user_choices):
         preferred = choice["Preferred"]
         apartment = choice["Apartment A"] if preferred == "Apartment A" else choice["Apartment B"]
         
-        # Count individual feature occurrences
         feature_importance["Price"] += apartment["Price"]
         feature_importance["Size"] += apartment["Size"]
-        feature_importance["Neighborhood - " + apartment["Neighborhood"]] += 1
+        feature_importance[f"Neighborhood - {apartment['Neighborhood']}"] += 1
         for amenity in apartment["Amenities"]:
-            feature_importance["Amenity - " + amenity] += 1
+            feature_importance[f"Amenity - {amenity}"] += 1
     
     sorted_features = feature_importance.most_common()
     return pd.DataFrame(sorted_features, columns=["Feature", "Importance"])
@@ -72,10 +71,11 @@ def streamlit_app():
     bedroom_choice = st.radio("Select Apartment Type", ["1 Bedroom", "2 Bedroom"])
     bedrooms = 1 if bedroom_choice == "1 Bedroom" else 2
     
-    st.write("Please compare the apartments and select your preferred option.")
-    pairs = generate_comparisons(bedrooms=bedrooms)
+    if "comparison_pairs" not in st.session_state:
+        st.session_state.comparison_pairs = generate_comparisons(bedrooms=bedrooms)
     
-    for i, (apt1, apt2) in enumerate(pairs, 1):
+    st.write("Please compare the apartments and select your preferred option.")
+    for i, (apt1, apt2) in enumerate(st.session_state.comparison_pairs, 1):
         st.subheader(f"Comparison {i} - {bedroom_choice}")
         col1, col2 = st.columns(2)
         
@@ -96,7 +96,9 @@ def streamlit_app():
                     st.write(f"**{key}:** {value}")
         
         choice = st.radio(f"Choose for Comparison {i}", ("Apartment A", "Apartment B"), key=f"choice_{i}")
-        st.session_state.user_choices.append({"Comparison": i, "Preferred": choice, "Apartment A": apt1, "Apartment B": apt2})
+        if st.button(f"Save Choice {i}", key=f"save_choice_{i}"):
+            st.session_state.user_choices.append({"Comparison": i, "Preferred": choice, "Apartment A": apt1, "Apartment B": apt2})
+            st.success(f"Choice for Comparison {i} saved!")
     
     if st.button("Analyze Preferences"):
         results_df = analyze_preferences(st.session_state.user_choices)
