@@ -74,9 +74,10 @@ def streamlit_app():
     bedroom_choice = st.radio("Select Apartment Type", ["1 Bedroom", "2 Bedroom"], key="bedroom_choice")
     bedrooms = 1 if bedroom_choice == "1 Bedroom" else 2
     
-    if "comparison_pairs" not in st.session_state or st.session_state.bedroom_choice != bedroom_choice:
+    if "last_bedroom_choice" not in st.session_state or st.session_state.last_bedroom_choice != bedroom_choice:
         st.session_state.comparison_pairs = generate_comparisons(bedrooms=bedrooms)
         st.session_state.current_index = 0
+        st.session_state.last_bedroom_choice = bedroom_choice
     
     if st.session_state.current_index < len(st.session_state.comparison_pairs):
         apt1, apt2 = st.session_state.comparison_pairs[st.session_state.current_index]
