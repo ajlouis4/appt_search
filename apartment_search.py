@@ -14,45 +14,26 @@ def generate_apartment(bedrooms):
         size_range = (700, 1100)
     
     neighborhoods = ["Lake Shore East", "River North", "Loop", "Lincoln Park", "Wicker Park", "West Loop", "Fulton Market"]
-    neighborhood = random.choices(neighborhoods, weights=[1, 1, 1, 1, 1, 1, 1])[0]  # West Loop & Fulton Market more likely
+    neighborhood = random.choice(neighborhoods)
     
-    if neighborhood in ["West Loop", "Fulton Market"]:
-        price_range = random.choice(price_brackets[1:])  # More expensive options
-    else:
-        price_range = random.choice(price_brackets)
-    
+    price_range = random.choice(price_brackets)
     price = random.randint(*price_range)
     size = random.randint(*size_range)
     
-    amenities_pool = random.random() < 0.3  # 30% chance for a pool if allowed
-    
-    amenities = set()
-    if price_range == price_brackets[0]:  # Low price tier
-        if random.random() < 0.7:  # 70% chance to have at least one amenity
-            amenities.add("Fitness Center")
-            if amenities_pool:
-                amenities.add("Pool")
-    else:
-        possible_amenities = ["Pool", "Sauna", "Fitness Center", "EV Charging", "Basketball Court"]
-        if random.random() < 0.7:  # 70% chance to have at least one amenity
-            amenities.update(random.sample(possible_amenities, k=random.randint(0, 5)))
-        # Ensure EV Charging, Sauna, and Basketball Court only appear in mid or high price tiers
-        if "EV Charging" in amenities or "Sauna" in amenities or "Basketball Court" in amenities:
-            if price_range == price_brackets[0]:
-                amenities.discard("EV Charging")
-                amenities.discard("Sauna")
-                amenities.discard("Basketball Court")
+    possible_amenities = ["Pool", "Sauna", "Fitness Center", "EV Charging", "Basketball Court", "Rooftop Lounge", "Dog Park", "Coworking Space", "Bike Storage", "Smart Home Features"]
+    num_amenities = random.randint(0, len(possible_amenities))  # Allows for no amenities up to all amenities
+    amenities = random.sample(possible_amenities, num_amenities)
     
     return {
         "Bedrooms": bedrooms,
         "Price": price,
         "Size": size,
         "Neighborhood": neighborhood,
-        "Amenities": list(amenities)
+        "Amenities": amenities
     }
 
-def generate_comparisons(n_apartments=10, bedrooms=1):
-    """Generate random pairwise comparisons within the selected bedroom group, limited to 25 comparisons."""
+def generate_comparisons(n_apartments=100, bedrooms=1):
+    """Generate 100 apartments and select 25 random pairwise comparisons."""
     apartments = [generate_apartment(bedrooms) for _ in range(n_apartments)]
     pairs = list(combinations(apartments, 2))
     random.shuffle(pairs)
@@ -103,7 +84,7 @@ def streamlit_app():
     bedrooms = 1 if bedroom_choice == "1 Bedroom" else 2
     
     if "last_bedroom_choice" not in st.session_state or st.session_state.last_bedroom_choice != bedroom_choice:
-        st.session_state.comparison_pairs = generate_comparisons(n_apartments=15, bedrooms=bedrooms)
+        st.session_state.comparison_pairs = generate_comparisons(n_apartments=100, bedrooms=bedrooms)
         st.session_state.current_index = 0
         st.session_state.last_bedroom_choice = bedroom_choice
     
