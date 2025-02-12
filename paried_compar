@@ -2,6 +2,7 @@ import random
 import pandas as pd
 import streamlit as st
 from itertools import combinations
+from collections import Counter
 
 def generate_apartment(bedrooms):
     """Generate a random apartment with given constraints."""
@@ -37,27 +38,38 @@ def generate_apartment(bedrooms):
         "Neighborhood": neighborhood
     }
 
-def generate_comparisons(n_apartments=10):
-    """Generate all pairwise comparisons within each bedroom group."""
-    one_bed_apartments = [generate_apartment(1) for _ in range(n_apartments)]
-    two_bed_apartments = [generate_apartment(2) for _ in range(n_apartments)]
+def generate_comparisons(n_apartments=10, bedrooms=1):
+    """Generate all pairwise comparisons within the selected bedroom group."""
+    apartments = [generate_apartment(bedrooms) for _ in range(n_apartments)]
+    pairs = list(combinations(apartments, 2))
+    return pairs
+
+def analyze_preferences(user_choices):
+    """Analyze user choices to determine the most important features."""
+    feature_importance = Counter()
     
-    one_bed_pairs = list(combinations(one_bed_apartments, 2))
-    two_bed_pairs = list(combinations(two_bed_apartments, 2))
+    for choice in user_choices:
+        preferred = choice["Preferred"]
+        apartment = choice["Apartment A"] if preferred == "Apartment A" else choice["Apartment B"]
+        
+        feature_importance.update(apartment)
     
-    return one_bed_pairs, two_bed_pairs
+    sorted_features = feature_importance.most_common()
+    return pd.DataFrame(sorted_features, columns=["Feature", "Importance"])
 
 def streamlit_app():
     """Streamlit UI for apartment comparisons."""
     st.title("Apartment Pairwise Comparison Study")
     
-    st.write("Please compare the apartments and select your preferred option.")
+    bedroom_choice = st.radio("Select Apartment Type", ["1 Bedroom", "2 Bedroom"])
+    bedrooms = 1 if bedroom_choice == "1 Bedroom" else 2
     
-    one_bed_pairs, two_bed_pairs = generate_comparisons()
+    st.write("Please compare the apartments and select your preferred option.")
+    pairs = generate_comparisons(bedrooms=bedrooms)
     user_choices = []
     
-    for i, (apt1, apt2) in enumerate(one_bed_pairs, 1):
-        st.subheader(f"Comparison {i} - 1 Bedroom")
+    for i, (apt1, apt2) in enumerate(pairs, 1):
+        st.subheader(f"Comparison {i} - {bedroom_choice}")
         col1, col2 = st.columns(2)
         
         with col1:
@@ -71,13 +83,13 @@ def streamlit_app():
                 st.write(f"**{key}:** {value}")
         
         choice = st.radio(f"Choose for Comparison {i}", ("Apartment A", "Apartment B"), key=f"choice_{i}")
-        user_choices.append({"Comparison": i, "Preferred": choice})
+        user_choices.append({"Comparison": i, "Preferred": choice, "Apartment A": apt1, "Apartment B": apt2})
     
-    if st.button("Save Responses"):
-        results_df = pd.DataFrame(user_choices)
-        results_df.to_csv("User_Choices.csv", index=False)
-        st.success("Your choices have been saved!")
-        st.download_button("Download CSV", results_df.to_csv(index=False).encode("utf-8"), "User_Choices.csv", "text/csv")
+    if st.button("Analyze Preferences"):
+        results_df = analyze_preferences(user_choices)
+        st.write("### Most Important Features")
+        st.dataframe(results_df)
+        st.download_button("Download Feature Importance CSV", results_df.to_csv(index=False).encode("utf-8"), "Feature_Importance.csv", "text/csv")
 
 if __name__ == "__main__":
     streamlit_app()
