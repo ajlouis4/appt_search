@@ -1,7 +1,6 @@
 import random
 import pandas as pd
 import streamlit as st
-from itertools import combinations
 from collections import Counter
 
 def generate_apartment(bedrooms):
@@ -32,56 +31,35 @@ def generate_apartment(bedrooms):
         "Amenities": amenities
     }
 
-def generate_comparisons(n_apartments=100, bedrooms=1):
-    """Generate 100 apartments and select 25 random pairwise comparisons."""
-    apartments = [generate_apartment(bedrooms) for _ in range(n_apartments)]
-    pairs = random.sample(list(combinations(apartments, 2)), 25)
-    return pairs
+def generate_apartments(n_apartments=25, bedrooms=1):
+    """Generate a list of apartments for rating."""
+    return [generate_apartment(bedrooms) for _ in range(n_apartments)]
 
-def analyze_preferences(user_choices):
-    """Analyze user choices to determine the most important features, with price and size scoring based on preference."""
+def analyze_preferences(user_ratings):
+    """Analyze user ratings to determine the most important features."""
     feature_importance = Counter()
-    neighborhood_counts = Counter()
-    neighborhood_wins = Counter()
-    total_comparisons = len(user_choices)
     
-    for choice in user_choices:
-        apt_a, apt_b = choice["Apartment A"], choice["Apartment B"]
-        preferred = choice["Preferred"]
+    for rating_entry in user_ratings:
+        apartment = rating_entry["Apartment"]
+        rating = rating_entry["Rating"]
         
-        # Price sensitivity: 1 if lower price was picked, 0 otherwise
-        if (apt_a["Price"] < apt_b["Price"] and preferred == "Apartment A") or (apt_b["Price"] < apt_a["Price"] and preferred == "Apartment B"):
-            feature_importance["Price Sensitivity"] += 1
+        # Adjust feature importance based on rating
+        feature_importance["Price"] += rating * (1 / apartment["Price"])  # Higher rating for lower price
+        feature_importance["Size"] += rating * apartment["Size"]  # Higher rating for larger size
+        feature_importance[f"Neighborhood - {apartment['Neighborhood']}"] += rating
         
-        # Size preference: 1 if larger size was picked, 0 otherwise
-        if (apt_a["Size"] > apt_b["Size"] and preferred == "Apartment A") or (apt_b["Size"] > apt_a["Size"] and preferred == "Apartment B"):
-            feature_importance["Size Preference"] += 1
-        
-        # Neighborhood importance
-        neighborhood_counts[apt_a["Neighborhood"]] += 1
-        neighborhood_counts[apt_b["Neighborhood"]] += 1
-        
-        selected_apartment = apt_a if preferred == "Apartment A" else apt_b
-        neighborhood_wins[selected_apartment["Neighborhood"]] += 1
-        
-        # Amenity importance
-        for amenity in selected_apartment["Amenities"]:
-            feature_importance[f"Amenity - {amenity}"] += 1
-    
-    # Calculate neighborhood score as win rate multiplied by total comparisons
-    for neighborhood, wins in neighborhood_wins.items():
-        if neighborhood_counts[neighborhood] > 0:
-            feature_importance[f"Neighborhood - {neighborhood}"] = (wins / neighborhood_counts[neighborhood]) * total_comparisons
+        for amenity in apartment["Amenities"]:
+            feature_importance[f"Amenity - {amenity}"] += rating
     
     sorted_features = feature_importance.most_common()
     return pd.DataFrame(sorted_features, columns=["Feature", "Importance"])
 
 def streamlit_app():
-    """Streamlit UI for apartment comparisons."""
-    st.title("Apartment Pairwise Comparison Study")
+    """Streamlit UI for apartment rating study."""
+    st.title("Apartment Rating Study")
     
-    if "user_choices" not in st.session_state:
-        st.session_state.user_choices = []
+    if "user_ratings" not in st.session_state:
+        st.session_state.user_ratings = []
     
     if "current_index" not in st.session_state:
         st.session_state.current_index = 0
@@ -90,36 +68,28 @@ def streamlit_app():
     bedrooms = 1 if bedroom_choice == "1 Bedroom" else 2
     
     if "last_bedroom_choice" not in st.session_state or st.session_state.last_bedroom_choice != bedroom_choice:
-        st.session_state.comparison_pairs = generate_comparisons(n_apartments=100, bedrooms=bedrooms)
+        st.session_state.apartments = generate_apartments(n_apartments=25, bedrooms=bedrooms)
         st.session_state.current_index = 0
         st.session_state.last_bedroom_choice = bedroom_choice
     
-    if st.session_state.current_index < len(st.session_state.comparison_pairs):
-        apt1, apt2 = st.session_state.comparison_pairs[st.session_state.current_index]
-        st.subheader(f"Comparison {st.session_state.current_index + 1} - {bedroom_choice}")
-        col1, col2 = st.columns(2)
+    if st.session_state.current_index < len(st.session_state.apartments):
+        apartment = st.session_state.apartments[st.session_state.current_index]
+        st.subheader(f"Apartment {st.session_state.current_index + 1} - {bedroom_choice}")
         
-        with col1:
-            st.write("### Apartment A")
-            for key, value in apt1.items():
-                st.write(f"**{key}:** {', '.join(value) if isinstance(value, list) else value}")
+        for key, value in apartment.items():
+            st.write(f"**{key}:** {', '.join(value) if isinstance(value, list) else value}")
         
-        with col2:
-            st.write("### Apartment B")
-            for key, value in apt2.items():
-                st.write(f"**{key}:** {', '.join(value) if isinstance(value, list) else value}")
+        rating = st.slider("Rate this apartment (1-5)", 1, 5, 3, key=f"rating_{st.session_state.current_index}")
         
-        choice = st.radio("Select your preferred apartment", ("Apartment A", "Apartment B"), key=f"choice_{st.session_state.current_index}")
-        
-        if st.button("Save Response"):
-            st.session_state.user_choices.append({"Comparison": st.session_state.current_index + 1, "Preferred": choice, "Apartment A": apt1, "Apartment B": apt2})
+        if st.button("Save Rating"):
+            st.session_state.user_ratings.append({"Apartment": apartment, "Rating": rating})
             st.session_state.current_index += 1
             st.experimental_set_query_params(index=st.session_state.current_index)
             st.rerun()
     
-    if st.session_state.current_index >= len(st.session_state.comparison_pairs):
+    if st.session_state.current_index >= len(st.session_state.apartments):
         if st.button("Analyze Preferences"):
-            results_df = analyze_preferences(st.session_state.user_choices)
+            results_df = analyze_preferences(st.session_state.user_ratings)
             st.write("### Most Important Features")
             st.dataframe(results_df)
             st.download_button("Download Feature Importance CSV", results_df.to_csv(index=False).encode("utf-8"), "Feature_Importance.csv", "text/csv")
