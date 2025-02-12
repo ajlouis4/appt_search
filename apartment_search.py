@@ -24,17 +24,18 @@ def generate_apartment(bedrooms):
     price = random.randint(*price_range)
     size = random.randint(*size_range)
     
-    amenities_pool = random.random() < 0.6  # 30% chance for a pool if allowed
+    amenities_pool = random.random() < 0.3  # 30% chance for a pool if allowed
     
     amenities = set()
     if price_range == price_brackets[0]:  # Low price tier
-        amenities.add("Fitness Center")
-        if amenities_pool:
-            amenities.add("Pool")
+        if random.random() < 0.7:  # 70% chance to have at least one amenity
+            amenities.add("Fitness Center")
+            if amenities_pool:
+                amenities.add("Pool")
     else:
         possible_amenities = ["Pool", "Sauna", "Fitness Center", "EV Charging", "Basketball Court"]
-        if price_range in price_brackets[1:]:  # Mid and High price tiers
-            amenities.update(random.sample(possible_amenities, k=random.randint(1, 5)))
+        if random.random() < 0.7:  # 70% chance to have at least one amenity
+            amenities.update(random.sample(possible_amenities, k=random.randint(0, 5)))
         # Ensure EV Charging, Sauna, and Basketball Court only appear in mid or high price tiers
         if "EV Charging" in amenities or "Sauna" in amenities or "Basketball Court" in amenities:
             if price_range == price_brackets[0]:
